@@ -1,0 +1,27 @@
+# Version control
+.git
+.gitignore
+
+# Docker
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Editor directories and files
+.idea
+.vscode
+*.swp
+*.swo
+
+# Build artifacts
+bin/
+dist/
+*.exe
+*.test
+*.out
+
+# Go specific
+vendor/
+
+# Logs
+*.log
