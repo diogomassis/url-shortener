@@ -1,0 +1,14 @@
+rules:
+  default: false
+  custom:
+    - seriesQuery: 'http_requests_total{kubernetes_namespace!="",kubernetes_pod_name!=""}'
+      resources:
+        overrides:
+          kubernetes_namespace: { resource: "namespace" }
+          kubernetes_pod_name: { resource: "pod" }
+      name:
+        matches: "^http_requests_total$"
+        as: "http_requests_qps"
+      metricsQuery: "sum(rate(<<.Series>>{<<.LabelMatchers>>}[2m])) by (<<.GroupBy>>)"
+prometheus:
+  url: http://prometheus-server.default.svc

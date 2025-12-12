@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{PROJECT_NAME}}
+  labels:
+    app: {{PROJECT_NAME}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{PROJECT_NAME}}
+  template:
+    metadata:
+      labels:
+        app: {{PROJECT_NAME}}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{APP_PORT}}"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: {{PROJECT_NAME}}
+          image: {{PROJECT_NAME}}:local
+          imagePullPolicy: Never
+          ports:
+            - containerPort: {{APP_PORT}}
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
