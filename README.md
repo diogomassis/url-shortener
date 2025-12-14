@@ -78,6 +78,29 @@ The `generateUniqueShortCode` function in the URL service implements a multi-ste
 - **Collision Resistance**: The retry mechanism with a changing salt makes it highly unlikely that two different URLs will produce the same short code.
 - **Security**: Using `hashids` with a secret salt makes it difficult for others to guess the sequence of short codes.
 
+## Known Issues, Trade-offs, and Future Improvements
+
+### Problems and Restrictions
+
+- **In-Memory Fallback is Not Persistent**: The current fallback repository (`memoryRepository`) is not suitable for production. If all pods restart, all URL data will be lost unless it was successfully cached in Redis. This should be replaced with a persistent database like PostgreSQL or a distributed key-value store.
+- **Single Point of Failure (Redis)**: Although the application has a fallback, if Redis is the primary data source and it fails, new URLs can't be reliably shortened across multiple replicas, as each pod would have its own in-memory state.
+- **Stateless `hashids` Salt**: The salt for `hashids` is hardcoded. A more secure approach would be to manage this as a secret within Kubernetes.
+
+### Trade-offs
+
+- **Performance vs. Consistency (Cache)**: The cache is updated asynchronously ("best effort") to avoid blocking API responses. This means there's a brief moment where the cache might be stale after a write operation. This trade-off prioritizes write performance over immediate consistency.
+- **Simplicity vs. Robustness (Repository)**: The repository interfaces are simple (`Get`, `Save`). They don't account for more complex scenarios like transactions or batch operations, which would be necessary for a more advanced system.
+
+### Rejected Decisions
+
+- **Using a Database as the First Choice**: We initially considered using a full-fledged SQL database like PostgreSQL. This was rejected for the initial version to favor simplicity and speed, using Redis and in-memory storage to get a working prototype faster.
+- **Fully Random Short Codes**: Generating a completely random string for the short code was rejected because it doesn't guarantee that the same original URL will map to the same short URL. The deterministic hashing approach was chosen to provide this consistency.
+
+### Known Failures
+
+- **Hash Collision Exhaustion**: In the extremely rare event that a URL generates 10 short codes that all happen to be in use (collisions), the `Shorten` function will fail and return an error. The probability is astronomically low but not zero.
+- **Data Race in In-Memory Repository**: The `memoryRepository` uses a `sync.RWMutex` for concurrency control. While generally safe, it's not as battle-tested as a proper database's transaction and isolation levels. Heavy concurrent writes could potentially reveal edge cases.
+
 ## Project Structure
 
 ```folder
