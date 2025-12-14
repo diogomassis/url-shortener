@@ -22,6 +22,9 @@ spec:
         - name: url-shortener
           image: url-shortener:local
           imagePullPolicy: Never
+          env:
+            - name: REDIS_ADDR
+              value: "redis:6379"
           ports:
             - containerPort: 3000
           resources:
