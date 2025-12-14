@@ -1,4 +1,4 @@
-.PHONY: build-ci build-app cluster-create cluster-delete image-import deploy run
+.PHONY: build-ci build-app cluster-create cluster-delete image-import deploy run clean
 
 # Build the CI base image
 build-ci:
@@ -23,11 +23,13 @@ image-import:
 # Install NGINX Ingress Controller
 ingress-install:
 	kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.0/deploy/static/provider/cloud/deploy.yaml
+	@echo "Waiting for Ingress Controller to be created..."
+	@sleep 15
 	@echo "Waiting for Ingress Controller to be ready..."
 	kubectl wait --namespace ingress-nginx \
 	  --for=condition=ready pod \
 	  --selector=app.kubernetes.io/component=controller \
-	  --timeout=120s
+	  --timeout=300s
 
 # Setup Helm repos
 helm-setup:
@@ -51,3 +53,8 @@ deploy:
 
 # Run everything (create cluster, build, import, install ingress, install monitoring, deploy)
 run: cluster-create build-app image-import ingress-install monitoring-install deploy
+
+# Clean up everything
+clean: cluster-delete
+	docker rmi url-shortener:local || true
+	docker rmi minha-api-ci:latest || true
