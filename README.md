@@ -16,6 +16,47 @@ The project follows a Hexagonal Architecture (Ports and Adapters) to ensure a cl
   - **Prometheus Adapter**: Exposes custom metrics to the Kubernetes API for autoscaling.
 - **Autoscaling**: A Horizontal Pod Autoscaler (HPA) automatically scales the application based on requests per second (QPS).
 
+## Architectural Decisions
+
+### 1. Hexagonal Architecture (Ports and Adapters)
+
+**What:**
+The application is structured using Hexagonal Architecture, dividing the code into "Core" (Business Logic) and "Adapters" (Infrastructure).
+
+**How:**
+
+- **Core (`internal/core`)**: Contains the `Domain` entities (e.g., `URL`), `Ports` (interfaces like `URLRepository`, `URLService`), and `Services` (business logic implementation). This layer has no external dependencies.
+- **Adapters (`internal/adapters`)**: Contains the implementation of the ports.
+  - **Driving Adapters**: The HTTP Handler (`internal/adapters/handler/http`) drives the application.
+  - **Driven Adapters**: The Repositories (`internal/adapters/repository`) implement the storage interface.
+
+**Why:**
+
+- **Decoupling**: The business logic is independent of the database or web framework.
+- **Testability**: We can easily mock interfaces to test the core logic without spinning up a database or server.
+- **Flexibility**: Switching from In-Memory to Redis or SQL requires only writing a new adapter, without changing the core logic.
+
+### 2. Caching Strategy (Redis + Fallback)
+
+**What:**
+A hybrid caching mechanism using Redis as the primary cache and an In-Memory map as a fallback/persistent storage (for this demo).
+
+**How:**
+We implemented a **Decorator Pattern** in `internal/adapters/repository/cached`.
+
+- **Write (Save)**:
+    1. Saves to the Persistent storage (Source of Truth) first to ensure data safety.
+    2. Asynchronously updates the Redis cache (Best Effort).
+- **Read (Get)**:
+    1. Tries to fetch from Redis first (Fast path).
+    2. **Fallback**: If Redis is down or the key is missing, it fetches from Persistent storage.
+    3. **Self-Healing**: If found in Persistent storage but not in Redis, it asynchronously populates Redis.
+
+**Why:**
+
+- **Performance**: Redis provides sub-millisecond access times for high-read workloads (redirects).
+- **Resilience**: If the Redis cluster fails, the application automatically degrades to using the internal memory/database without downtime.
+
 ## Project Structure
 
 ```folder
