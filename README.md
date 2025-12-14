@@ -57,6 +57,27 @@ We implemented a **Decorator Pattern** in `internal/adapters/repository/cached`.
 - **Performance**: Redis provides sub-millisecond access times for high-read workloads (redirects).
 - **Resilience**: If the Redis cluster fails, the application automatically degrades to using the internal memory/database without downtime.
 
+### 3. Collision-Resistant Hash Generation
+
+**What:**
+A deterministic and collision-resistant approach to generating short codes.
+
+**How:**
+The `generateUniqueShortCode` function in the URL service implements a multi-step process:
+
+1. **Deterministic Hashing**: It creates a `SHA256` hash from the original URL combined with a salt (an integer that is incremented on retries). This ensures that the same URL will always produce the same sequence of potential hashes.
+2. **Shortening with `hashids`**: It uses the `hashids` library to convert the first few bytes of the hash into a short, non-sequential, and URL-friendly string.
+3. **Collision Handling**:
+    - Before saving, it checks if the generated `shortCode` already exists in the repository.
+    - If a collision is detected, it increments the salt and retries the process, generating a new, different hash.
+    - This retry mechanism is attempted up to a `MaxRetries` limit to prevent infinite loops.
+
+**Why:**
+
+- **Predictability**: The same URL will always map to the same short code, preventing the creation of multiple short URLs for the same destination.
+- **Collision Resistance**: The retry mechanism with a changing salt makes it highly unlikely that two different URLs will produce the same short code.
+- **Security**: Using `hashids` with a secret salt makes it difficult for others to guess the sequence of short codes.
+
 ## Project Structure
 
 ```folder
